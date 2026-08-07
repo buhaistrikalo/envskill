@@ -89,8 +89,9 @@ envskill setup --agent all --import ~/.env
 Setup creates or validates the owner-only store, keeps existing secret names
 unless `--overwrite` is explicitly supplied, and finishes with a value-free
 doctor check. A different existing `SKILL.md` is reported and left untouched;
-use `--force` only when replacing that copy is intentional. Setup never opens or
-prints dotenv or store values.
+use `--force` only when replacing that copy is intentional. Setup never prints
+dotenv or store values; with `--import`, it reads the explicitly selected dotenv
+file only to perform the import.
 
 ## Install the Agent Skill
 

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from envskill.setup import detect_agents, resolve_agents
+from envskill.setup import detect_agents, hermes_home, resolve_agents
 
 
 class SetupSelectionTests(unittest.TestCase):
@@ -24,6 +24,10 @@ class SetupSelectionTests(unittest.TestCase):
 
         with patch.dict(os.environ, {"HERMES_HOME": str(self.home / ".hermes")}, clear=False):
             self.assertEqual(detect_agents(home=self.home, which=which), ["codex", "claude"])
+
+    def test_empty_hermes_home_uses_user_home_default(self):
+        with patch.dict(os.environ, {"HERMES_HOME": ""}, clear=False):
+            self.assertEqual(hermes_home(self.home), self.home / ".hermes")
 
     def test_resolve_agents_supports_auto_single_agent_and_all(self):
         self.assertEqual(resolve_agents("auto", ["hermes", "codex"]), ["hermes", "codex"])

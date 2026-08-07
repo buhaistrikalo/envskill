@@ -21,7 +21,7 @@ envskill setup
 
 It initializes the owner-only store, detects supported agent hosts, installs this
 skill, and performs a value-free verification. To import an explicitly selected
-legacy dotenv file without opening it, use:
+legacy dotenv file without displaying its values, use:
 
 ```bash
 envskill setup --agent all --import ~/.env
