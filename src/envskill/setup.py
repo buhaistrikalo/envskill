@@ -88,6 +88,8 @@ def _validate_directory(path: Path, label: str, info: os.stat_result) -> None:
             raise StoreError(f"{label.capitalize()} is not owned by the current user: {path}")
         if stat.S_IMODE(info.st_mode) & (stat.S_IWGRP | stat.S_IWOTH):
             raise StoreError(f"{label.capitalize()} is writable by another user: {path}")
+        if not os.access(path, os.W_OK | os.X_OK):
+            raise StoreError(f"{label.capitalize()} is not writable by the current user: {path}")
 
 
 def _verify_directory(path: Path, label: str, *, create: bool = True) -> None:
@@ -210,7 +212,7 @@ def _skill_status(target: Path, target_exists: bool, force: bool) -> str:
         raise StoreError(f"Cannot read existing skill {target}: {exc}") from exc
     bundled = bundled_skill().read_text(encoding="utf-8")
     if current == bundled:
-        return "already"
+        return "updated" if force else "already"
     if not force:
         return "conflict"
     return "updated"

@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from envskill.cli import main
+from envskill.setup import bundled_skill
 from envskill.store import load
 
 
@@ -304,6 +305,50 @@ class CliTests(unittest.TestCase):
         self.assertIn("writable by another user", error)
         self.assertFalse(self.path.exists())
         self.assertFalse((good / "envskill" / "SKILL.md").exists())
+
+    @unittest.skipUnless(os.name == "posix", "skill permission behavior is POSIX-specific")
+    def test_setup_force_replaces_identical_insecure_existing_skill(self):
+        target = Path(self.temp.name) / "skills" / "envskill"
+        target.mkdir(parents=True)
+        skill = target / "SKILL.md"
+        skill.write_text(bundled_skill().read_text(encoding="utf-8"), encoding="utf-8")
+        skill.chmod(0o666)
+        targets = {
+            "universal": target.parent,
+            "codex": target.parent,
+            "claude": target.parent,
+            "hermes": target.parent,
+        }
+
+        with patch("envskill.cli.TARGET_DIRS", targets):
+            code, output, error = self.call("setup", "--agent", "codex", "--force")
+
+        self.assertEqual((code, error), (0, ""))
+        self.assertIn("Skill updated for codex", output)
+        self.assertEqual(stat.S_IMODE(skill.stat().st_mode), 0o600)
+
+    @unittest.skipUnless(os.name == "posix", "directory permission behavior is POSIX-specific")
+    def test_setup_rejects_nonwritable_target_before_mutating_store(self):
+        parent = Path(self.temp.name) / "readonly-skills"
+        parent.mkdir()
+        parent.chmod(0o555)
+        targets = {
+            "universal": parent,
+            "codex": parent,
+            "claude": parent,
+            "hermes": parent,
+        }
+
+        try:
+            with patch("envskill.cli.TARGET_DIRS", targets):
+                code, output, error = self.call("setup", "--agent", "codex")
+        finally:
+            parent.chmod(0o755)
+
+        self.assertEqual(code, 2)
+        self.assertEqual(output, "")
+        self.assertIn("not writable by the current user", error)
+        self.assertFalse(self.path.exists())
 
     def test_setup_does_not_overwrite_existing_skill_without_force(self):
         target = Path(self.temp.name) / "skills" / "envskill"
