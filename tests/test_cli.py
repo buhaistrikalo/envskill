@@ -1,6 +1,7 @@
 import contextlib
 import io
 import os
+import stat
 import subprocess
 import sys
 import tempfile
@@ -9,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from envskill.cli import main
+from envskill.store import load
 
 
 class CliTests(unittest.TestCase):
@@ -167,6 +169,75 @@ class CliTests(unittest.TestCase):
         self.assertEqual(self.path.read_text().count("TOKEN="), 1)
         code, output, _ = self.call("list")
         self.assertEqual((code, output), (0, "SECOND\nTOKEN\n"))
+
+    def test_setup_initializes_store_installs_skill_and_runs_doctor(self):
+        target = Path(self.temp.name) / "skills"
+        targets = {"universal": target, "codex": target, "claude": target, "hermes": target}
+        with patch("envskill.cli.TARGET_DIRS", targets):
+            code, output, error = self.call("setup", "--agent", "codex")
+
+        self.assertEqual((code, error), (0, ""))
+        self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
+        self.assertTrue((target / "envskill" / "SKILL.md").is_file())
+        self.assertIn("Store created:", output)
+        self.assertIn("Skill installed for codex:", output)
+        self.assertIn("Doctor: OK", output)
+
+    def test_setup_import_preserves_existing_names_and_hides_values(self):
+        source = Path(self.temp.name) / "source.env"
+        source.write_text(
+            'EXISTING="replacement-placeholder"\nNEW="new-placeholder"\n', encoding="utf-8"
+        )
+        self.call("set", "EXISTING", "--stdin", stdin="existing-placeholder")
+        target = Path(self.temp.name) / "skills"
+        targets = {"universal": target, "codex": target, "claude": target, "hermes": target}
+
+        with patch("envskill.cli.TARGET_DIRS", targets):
+            code, output, error = self.call(
+                "setup", "--agent", "codex", "--import", str(source)
+            )
+
+        self.assertEqual((code, error), (0, ""))
+        self.assertIn("Imported 1 variable(s); kept 1", output)
+        self.assertNotIn("placeholder", output)
+        self.assertEqual(load(self.path)["EXISTING"], "existing-placeholder")
+        self.assertEqual(load(self.path)["NEW"], "new-placeholder")
+
+    def test_setup_is_idempotent_for_an_identical_skill(self):
+        target = Path(self.temp.name) / "skills"
+        targets = {"universal": target, "codex": target, "claude": target, "hermes": target}
+        with patch("envskill.cli.TARGET_DIRS", targets):
+            first = self.call("setup", "--agent", "codex")
+            second = self.call("setup", "--agent", "codex")
+
+        self.assertEqual(first[0:3:2], (0, ""))
+        self.assertEqual(second[0], 0)
+        self.assertEqual(second[2], "")
+        self.assertIn("already installed for codex", second[1])
+
+    def test_setup_does_not_overwrite_existing_skill_without_force(self):
+        target = Path(self.temp.name) / "skills" / "envskill"
+        target.mkdir(parents=True)
+        skill = target / "SKILL.md"
+        skill.write_text("custom skill", encoding="utf-8")
+        targets = {
+            "universal": target.parent,
+            "codex": target.parent,
+            "claude": target.parent,
+            "hermes": target.parent,
+        }
+
+        with patch("envskill.cli.TARGET_DIRS", targets):
+            code, output, error = self.call("setup", "--agent", "codex")
+
+        self.assertEqual((code, error), (0, ""))
+        self.assertIn("not overwritten for codex", output)
+        self.assertEqual(skill.read_text(encoding="utf-8"), "custom skill")
+
+    def test_setup_requires_explicit_import_flag_for_overwrite(self):
+        code, _, error = self.call("setup", "--overwrite")
+        self.assertEqual(code, 2)
+        self.assertIn("--overwrite requires --import", error)
 
 
 if __name__ == "__main__":

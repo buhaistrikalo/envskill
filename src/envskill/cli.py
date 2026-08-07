@@ -4,18 +4,15 @@ from __future__ import annotations
 
 import argparse
 import getpass
-import importlib.resources
 import json
 import os
 import shutil
-import stat
 import sys
-import tempfile
-from contextlib import suppress
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 from . import __version__
+from .setup import SUPPORTED_AGENTS, TARGET_DIRS, install_skill, run_setup
 from .store import (
     StoreError,
     default_path,
@@ -28,14 +25,6 @@ from .store import (
     validate_name,
     validate_store,
 )
-
-TARGET_DIRS = {
-    # The open Agent Skills user directory used by Codex and other compatible hosts.
-    "universal": Path.home() / ".agents" / "skills",
-    "codex": Path.home() / ".agents" / "skills",
-    "claude": Path.home() / ".claude" / "skills",
-    "hermes": Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / "skills",
-}
 
 SAFE_PARENT_NAMES = {
     "COLORTERM",
@@ -128,6 +117,33 @@ def parser() -> argparse.ArgumentParser:
         "--force", action="store_true", help="Replace an existing SKILL.md"
     )
 
+    setup_parser = sub.add_parser(
+        "setup", help="Initialize the store and configure Agent Skills hosts"
+    )
+    setup_parser.add_argument(
+        "--agent",
+        choices=["auto", "all", *SUPPORTED_AGENTS],
+        default="auto",
+        help="Host to configure (default: detect installed hosts)",
+    )
+    setup_parser.add_argument(
+        "--import",
+        dest="import_source",
+        type=Path,
+        metavar="PATH",
+        help="Import names and values from an explicitly selected dotenv file",
+    )
+    setup_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace names already present in the store during --import",
+    )
+    setup_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace an existing, different Agent Skill copy",
+    )
+
     sub.add_parser("doctor", help="Check store permissions and skill availability")
     return root
 
@@ -161,69 +177,6 @@ def child_environment(parent: Dict[str, str], inherit: Optional[str]) -> Dict[st
     return {name: parent[name] for name in names if name in parent}
 
 
-def bundled_skill() -> importlib.resources.abc.Traversable:
-    return importlib.resources.files("envskill").joinpath("bundled_skill", "SKILL.md")
-
-
-def install_skill(parent: Path, force: bool) -> Path:
-    parent = parent.expanduser()
-    destination = parent / "envskill"
-    target = destination / "SKILL.md"
-    temp_name: Optional[str] = None
-    try:
-        parent.mkdir(parents=True, exist_ok=True)
-        parent_info = parent.lstat()
-        if stat.S_ISLNK(parent_info.st_mode) or not stat.S_ISDIR(parent_info.st_mode):
-            raise StoreError(f"Skills parent must be a real directory: {parent}")
-        if os.name == "posix":
-            if parent_info.st_uid != os.geteuid():
-                raise StoreError(f"Skills parent is not owned by the current user: {parent}")
-            if stat.S_IMODE(parent_info.st_mode) & (stat.S_IWGRP | stat.S_IWOTH):
-                raise StoreError(f"Skills parent is writable by another user: {parent}")
-        try:
-            destination_info = destination.lstat()
-        except FileNotFoundError:
-            destination.mkdir(mode=0o755)
-            destination_info = destination.lstat()
-        else:
-            if not force:
-                raise StoreError(f"Skill already exists: {destination}; use --force to replace it")
-
-        if stat.S_ISLNK(destination_info.st_mode) or not stat.S_ISDIR(destination_info.st_mode):
-            raise StoreError(f"Skill destination must be a real directory: {destination}")
-        if os.name == "posix" and destination_info.st_uid != os.geteuid():
-            raise StoreError(f"Skill destination is not owned by the current user: {destination}")
-        if os.name == "posix" and stat.S_IMODE(destination_info.st_mode) & (
-            stat.S_IWGRP | stat.S_IWOTH
-        ):
-            raise StoreError(f"Skill destination is writable by another user: {destination}")
-
-        try:
-            target_info = target.lstat()
-        except FileNotFoundError:
-            pass
-        else:
-            if stat.S_ISLNK(target_info.st_mode) or not stat.S_ISREG(target_info.st_mode):
-                raise StoreError(f"Existing SKILL.md must be a regular, non-symlink file: {target}")
-
-        descriptor, temp_name = tempfile.mkstemp(prefix=".SKILL.", dir=str(destination), text=True)
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
-            handle.write(bundled_skill().read_text(encoding="utf-8"))
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temp_name, target)
-        temp_name = None
-        return target
-    except StoreError:
-        raise
-    except OSError as exc:
-        raise StoreError(f"Cannot install skill at {destination}: {exc}") from exc
-    finally:
-        if temp_name is not None:
-            with suppress(FileNotFoundError):
-                os.unlink(temp_name)
-
-
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser().parse_args(argv)
     path = active_path(args.file)
@@ -241,6 +194,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             parent = args.dir if args.dir else TARGET_DIRS[args.target]
             installed = install_skill(parent, args.force)
             print(f"Skill installed: {installed}")
+            return 0
+
+        if args.command == "setup":
+            for message in run_setup(
+                path,
+                agent=args.agent,
+                import_source=args.import_source,
+                overwrite=args.overwrite,
+                force=args.force,
+                target_dirs=TARGET_DIRS,
+            ):
+                print(message)
             return 0
 
         if args.command == "doctor":

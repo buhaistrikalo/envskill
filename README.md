@@ -50,6 +50,13 @@ envskill init
 envskill doctor
 ```
 
+For a normal first run, the guided command combines initialization, agent-skill
+installation, and a value-free verification:
+
+```bash
+envskill setup
+```
+
 Default location:
 
 ```text
@@ -57,6 +64,33 @@ Default location:
 ```
 
 Override it globally with `ENVSKILL_FILE` or per command with `--file`.
+
+## Guided setup
+
+`envskill setup` is the shortest safe path from installation to a working agent
+integration. By default it detects Codex, Claude Code, and Hermes from their
+executables or user configuration directories, then installs the portable skill
+only for the hosts it finds.
+
+```bash
+# Detect installed hosts
+envskill setup
+
+# Configure one host explicitly
+envskill setup --agent codex
+
+# Configure every supported host
+envskill setup --agent all
+
+# Import an explicitly selected legacy dotenv file in the same run
+envskill setup --agent all --import ~/.env
+```
+
+Setup creates or validates the owner-only store, keeps existing secret names
+unless `--overwrite` is explicitly supplied, and finishes with a value-free
+doctor check. A different existing `SKILL.md` is reported and left untouched;
+use `--force` only when replacing that copy is intentional. Setup never opens or
+prints dotenv or store values.
 
 ## Install the Agent Skill
 
@@ -131,6 +165,12 @@ envskill unset GITHUB_TOKEN
 
 ```bash
 envskill import-env --from ~/.env
+```
+
+For a first-run migration, the same import can be included in setup:
+
+```bash
+envskill setup --agent all --import ~/.env
 ```
 
 Existing names are preserved by default. Pass `--overwrite` to replace them. The command reports

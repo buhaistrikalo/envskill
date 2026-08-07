@@ -11,6 +11,26 @@ metadata:
 
 Use `envskill` as the boundary between secret values and commands that need them.
 
+## First-time setup
+
+If the CLI or store is not configured, ask the user to run the guided setup:
+
+```bash
+envskill setup
+```
+
+It initializes the owner-only store, detects supported agent hosts, installs this
+skill, and performs a value-free verification. To import an explicitly selected
+legacy dotenv file without opening it, use:
+
+```bash
+envskill setup --agent all --import ~/.env
+```
+
+Existing secret names are kept by default. Only add `--overwrite` when the user
+explicitly wants imported names to replace existing ones. A different existing
+skill copy is never replaced unless `--force` is explicitly supplied.
+
 ## Workflow
 
 1. Discover names with `envskill list`. This command prints names only.
