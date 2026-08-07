@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "envskill"
+version = "0.1.0"
+description = "A least-privilege environment variable bridge for AI coding agents"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Kirill Podyachenko" }]
+keywords = ["ai-agents", "agent-skills", "secrets", "environment-variables", "codex", "claude-code"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+  "Topic :: Software Development :: Build Tools",
+]
+
+[project.urls]
+Homepage = "https://github.com/buhaistrikalo/envskill"
+Repository = "https://github.com/buhaistrikalo/envskill"
+Issues = "https://github.com/buhaistrikalo/envskill/issues"
+
+[project.scripts]
+envskill = "envskill.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/envskill"]
+
+[tool.hatch.build]
+include = [
+  "src/envskill/**/*.py",
+  "src/envskill/bundled_skill/SKILL.md",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "SIM"]
