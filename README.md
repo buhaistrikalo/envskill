@@ -34,13 +34,19 @@ The CLI never has a command that prints a stored value.
 Requires Python 3.9+ on macOS or Linux.
 
 ```bash
-uv tool install git+https://github.com/buhaistrikalo/envskill.git
+uv tool install envskill
 ```
 
 Or with `pipx`:
 
 ```bash
-pipx install git+https://github.com/buhaistrikalo/envskill.git
+pipx install envskill
+```
+
+To install an unreleased commit directly from GitHub:
+
+```bash
+uv tool install git+https://github.com/buhaistrikalo/envskill.git
 ```
 
 Initialize the private store:

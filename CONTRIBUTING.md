@@ -7,3 +7,5 @@
 5. Open a pull request describing the security impact and test plan.
 
 Never add real credentials or copied `.env` files to tests, issues, commits, or pull requests.
+
+For a versioned release, follow [RELEASING.md](RELEASING.md).

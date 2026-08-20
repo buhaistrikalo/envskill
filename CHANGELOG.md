@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-20
+
 - Added guided `envskill setup` for store initialization, agent detection, skill installation, optional dotenv import, and value-free verification.
 - Existing secret names and customized skill copies are preserved unless explicit overwrite flags are supplied.
 
