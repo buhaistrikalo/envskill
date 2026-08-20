@@ -3,21 +3,29 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing version tag to verify and publish"
+        required: true
+        type: string
 
 jobs:
   build:
     name: Verify and build distributions
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.release_tag || github.ref_name }}
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
       - name: Verify tag matches package version
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           python - <<'PY'
           import os
@@ -56,6 +64,8 @@ jobs:
     name: Create GitHub release
     needs: build
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     permissions:
       contents: write
     steps:
@@ -69,4 +79,4 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag dist/* SHA256SUMS --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$RELEASE_TAG" --verify-tag dist/* SHA256SUMS --title "$RELEASE_TAG" --generate-notes

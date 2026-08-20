@@ -35,6 +35,13 @@ is scheduled.
 6. Verify the GitHub Release contains both distributions and `SHA256SUMS`, then
    install from the tag using the command in `README.md`.
 
+For an existing tag that was created before the current workflow was merged,
+run the workflow manually from `main`:
+
+```bash
+gh workflow run release.yml --ref main -f release_tag=v0.2.0
+```
+
 The workflow stops if the tag does not match the package version or any
 verification step fails. GitHub Release assets are immutable for a published
 version; create a new version for corrections.
