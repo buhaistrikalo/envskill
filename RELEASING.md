@@ -2,21 +2,19 @@
 
 Releases are made from `main` by pushing a tag that exactly matches the package
 version. The release workflow verifies the source, builds the distributions,
-publishes them to PyPI through Trusted Publishing, and creates a GitHub Release
-with the same artifacts and SHA-256 checksums.
+and creates a GitHub Release with the distributions and SHA-256 checksums.
 
-## One-time setup
+PyPI and Homebrew are future distribution targets. The current release path
+does not require either service.
 
-Configure a PyPI trusted publisher for:
+## Future distribution targets
 
-- owner: `buhaistrikalo`
-- repository: `envskill`
-- workflow: `.github/workflows/release.yml`
-- GitHub environment: `pypi`
+- [ ] Publish to PyPI through Trusted Publishing.
+- [ ] Add a Homebrew formula or tap after the package distribution path is
+      established.
 
-For the first release, configure a pending publisher if the `envskill` project
-does not exist on PyPI yet. No PyPI API token belongs in the repository or in
-GitHub secrets.
+Do not add PyPI API tokens to the repository or GitHub secrets when this work
+is scheduled.
 
 ## Release checklist
 
@@ -34,7 +32,9 @@ GitHub secrets.
    git tag -a v0.2.0 -m "Release v0.2.0"
    git push origin v0.2.0
    ```
+6. Verify the GitHub Release contains both distributions and `SHA256SUMS`, then
+   install from the tag using the command in `README.md`.
 
 The workflow stops if the tag does not match the package version or any
-verification step fails. PyPI uploads are immutable; use a yanked release for
-an accidental publication and create a new version for corrections.
+verification step fails. GitHub Release assets are immutable for a published
+version; create a new version for corrections.

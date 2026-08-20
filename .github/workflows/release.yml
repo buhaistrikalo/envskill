@@ -53,26 +53,20 @@ jobs:
           retention-days: 7
 
   publish:
-    name: Publish release
+    name: Create GitHub release
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/envskill
     permissions:
       contents: write
-      id-token: write
     steps:
       - name: Download distributions
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: python-dist
           path: dist/
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@ec4db0b4ddc65acdf4bff5fa45ac92d78b56bdf0 # v1.9.0
       - name: Create release checksums
         run: sha256sum dist/* > SHA256SUMS
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* SHA256SUMS --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag dist/* SHA256SUMS --title "$GITHUB_REF_NAME" --generate-notes

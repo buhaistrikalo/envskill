@@ -33,21 +33,26 @@ The CLI never has a command that prints a stored value.
 
 Requires Python 3.9+ on macOS or Linux.
 
+Install the latest tagged release directly from GitHub:
+
 ```bash
-uv tool install envskill
+uv tool install git+https://github.com/buhaistrikalo/envskill.git@v0.2.0
 ```
 
 Or with `pipx`:
 
 ```bash
-pipx install envskill
+pipx install git+https://github.com/buhaistrikalo/envskill.git@v0.2.0
 ```
 
-To install an unreleased commit directly from GitHub:
+To install the current unreleased `main` commit directly from GitHub:
 
 ```bash
 uv tool install git+https://github.com/buhaistrikalo/envskill.git
 ```
+
+PyPI publication is planned; until then, install from a GitHub tag as shown
+above.
 
 Initialize the private store:
 
