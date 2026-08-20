@@ -43,5 +43,5 @@ gh workflow run release.yml --ref main -f release_tag=v0.2.0
 ```
 
 The workflow stops if the tag does not match the package version or any
-verification step fails. GitHub Release assets are immutable for a published
-version; create a new version for corrections.
+verification step fails. A rerun may refresh assets for an existing release;
+for an intentional correction, create a new version.

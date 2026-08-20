@@ -33,7 +33,7 @@ The CLI never has a command that prints a stored value.
 
 Requires Python 3.9+ on macOS or Linux.
 
-Install the latest tagged release directly from GitHub:
+Install the `v0.2.0` release directly from GitHub:
 
 ```bash
 uv tool install git+https://github.com/buhaistrikalo/envskill.git@v0.2.0
