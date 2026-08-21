@@ -1,5 +1,9 @@
 # envskill
 
+<p align="center">
+  <img src="docs/images/envskill-hero.png" alt="envskill — safe local secret delivery to AI agents" width="900">
+</p>
+
 **Give AI coding agents the environment variables they need, without putting secret values in prompts, skills, repositories, or command history.**
 
 `envskill` is two small pieces:
