@@ -37,6 +37,16 @@ The CLI never has a command that prints a stored value.
 
 Requires Python 3.9+ on macOS or Linux.
 
+On macOS or Linux, install the latest tagged release from the project tap with
+Homebrew:
+
+```bash
+brew install buhaistrikalo/envskill/envskill
+```
+
+The tap formula pins a tagged release asset and its SHA-256 checksum. Homebrew
+installs the required Python runtime automatically.
+
 Install the `v0.3.0` release directly from GitHub:
 
 ```bash
@@ -55,8 +65,8 @@ To install the current unreleased `main` commit directly from GitHub:
 uv tool install git+https://github.com/buhaistrikalo/envskill.git
 ```
 
-PyPI publication is planned; until then, install from a GitHub tag as shown
-above.
+PyPI publication is planned; until then, use the Homebrew tap or install from
+a GitHub tag as shown above.
 
 Initialize the private store:
 

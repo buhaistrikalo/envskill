@@ -4,14 +4,15 @@ Releases are made from `main` by pushing a tag that exactly matches the package
 version. The release workflow verifies the source, builds the distributions,
 and creates a GitHub Release with the distributions and SHA-256 checksums.
 
-PyPI and Homebrew are future distribution targets. The current release path
-does not require either service.
+PyPI is a future distribution target. Homebrew is provided through the
+project-maintained [`buhaistrikalo/homebrew-envskill`](https://github.com/buhaistrikalo/homebrew-envskill)
+tap and is updated from tagged GitHub Release assets.
 
 ## Future distribution targets
 
 - [ ] Publish to PyPI through Trusted Publishing.
-- [ ] Add a Homebrew formula or tap after the package distribution path is
-      established.
+- [x] Add a Homebrew tap with a formula pinned to an immutable release asset
+      and SHA-256 checksum.
 
 Do not add PyPI API tokens to the repository or GitHub secrets when this work
 is scheduled.
@@ -34,6 +35,8 @@ is scheduled.
    ```
 6. Verify the GitHub Release contains both distributions and `SHA256SUMS`, then
    install from the tag using the command in `README.md`.
+7. When updating the Homebrew tap, change the formula URL, version, and
+   checksum together, then run `brew test buhaistrikalo/envskill/envskill`.
 
 For an existing tag that was created before the current workflow was merged,
 run the workflow manually from `main`:
