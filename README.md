@@ -37,16 +37,16 @@ The CLI never has a command that prints a stored value.
 
 Requires Python 3.9+ on macOS or Linux.
 
-Install the `v0.2.0` release directly from GitHub:
+Install the `v0.3.0` release directly from GitHub:
 
 ```bash
-uv tool install git+https://github.com/buhaistrikalo/envskill.git@v0.2.0
+uv tool install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
 ```
 
 Or with `pipx`:
 
 ```bash
-pipx install git+https://github.com/buhaistrikalo/envskill.git@v0.2.0
+pipx install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
 ```
 
 To install the current unreleased `main` commit directly from GitHub:
