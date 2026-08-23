@@ -9,7 +9,7 @@ import stat
 import tempfile
 from contextlib import suppress
 from pathlib import Path
-from typing import Callable, List, Mapping, Optional, Tuple
+from typing import Callable, Dict, List, Mapping, Optional, Tuple
 
 from .store import (
     StoreError,
@@ -235,6 +235,69 @@ def preflight_skill(parent: Path, force: bool) -> None:
         parent, create=False, allow_insecure_target=force
     )
     _skill_status(target, target_exists, force)
+
+
+def inspect_skill(parent: Path) -> Dict[str, object]:
+    """Return value-free skill metadata without creating or replacing anything."""
+    parent = parent.expanduser()
+    target = parent / "envskill" / "SKILL.md"
+    target_exists = False
+    try:
+        target_exists = target.lstat() is not None
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        return {
+            "path": str(target),
+            "exists": True,
+            "status": "unreadable",
+            "bundled_copy_match": None,
+            "ok": False,
+            "error": f"Cannot inspect skill file {target}: {exc}",
+        }
+
+    try:
+        _, target, _, target_exists = _prepare_skill_location(parent, create=False)
+    except StoreError as exc:
+        return {
+            "path": str(target),
+            "exists": target_exists,
+            "status": "invalid",
+            "bundled_copy_match": None,
+            "ok": False,
+            "error": str(exc),
+        }
+
+    if not target_exists:
+        return {
+            "path": str(target),
+            "exists": False,
+            "status": "missing",
+            "bundled_copy_match": None,
+            "ok": False,
+            "error": None,
+        }
+
+    try:
+        current = target.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return {
+            "path": str(target),
+            "exists": True,
+            "status": "unreadable",
+            "bundled_copy_match": None,
+            "ok": False,
+            "error": f"Cannot read existing skill {target}: {exc}",
+        }
+    match = current == bundled_skill().read_text(encoding="utf-8")
+    return {
+        "path": str(target),
+        "exists": True,
+        "status": "match" if match else "conflict",
+        "bundled_copy_match": match,
+        "ok": match,
+        "error": None,
+    }
 
 
 def run_setup(

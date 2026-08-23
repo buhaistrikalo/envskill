@@ -65,6 +65,24 @@ envskill init
 envskill doctor
 ```
 
+For agent-friendly diagnostics, check every supported host and request the
+stable, value-free JSON schema:
+
+```bash
+envskill doctor --agent all --json
+```
+
+The report has `schema_version: 1` and contains `cli` (`version`, `path`,
+`available`), `platform` (`name`, `system`, `supported`), `store` (`path`,
+`exists`, `type`, `owner`, `mode`, `private`, `parseable`, `valid`, `problems`),
+`agent_selection`, `agents`, `problems`, and `notes`. Each agent entry reports
+its `target`, `skill_path`, `exists`, `status` (`match`, `missing`, `conflict`,
+`invalid`, `unreadable`, or `unconfigured`), `bundled_copy_match`, `ok`, and
+`error`; store problem entries additionally contain their affected `path`.
+Every top-level problem includes a stable `code`, a safe `message`, and
+value-free `remediation` commands. Doctor never prints dotenv contents and does
+not create or modify the store or skill files.
+
 For a normal first run, the guided command combines initialization, agent-skill
 installation, and a value-free verification:
 

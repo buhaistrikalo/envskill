@@ -6,19 +6,25 @@ import argparse
 import getpass
 import json
 import os
-import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 from . import __version__
-from .setup import SUPPORTED_AGENTS, TARGET_DIRS, install_skill, run_setup
+from .doctor import build_report, format_report
+from .setup import (
+    SUPPORTED_AGENTS,
+    TARGET_DIRS,
+    detect_agents,
+    install_skill,
+    resolve_agents,
+    run_setup,
+)
 from .store import (
     StoreError,
     default_path,
     import_values,
     initialize,
-    insecure_mode,
     load,
     set_value,
     unset_value,
@@ -144,7 +150,16 @@ def parser() -> argparse.ArgumentParser:
         help="Replace an existing, different Agent Skill copy",
     )
 
-    sub.add_parser("doctor", help="Check store permissions and skill availability")
+    doctor_parser = sub.add_parser("doctor", help="Check store permissions and skill availability")
+    doctor_parser.add_argument(
+        "--agent",
+        choices=["auto", "all", *SUPPORTED_AGENTS],
+        default="auto",
+        help="Host to check (default: detect installed hosts)",
+    )
+    doctor_parser.add_argument(
+        "--json", action="store_true", help="Print the stable machine-readable report"
+    )
     return root
 
 
@@ -209,24 +224,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return 0
 
         if args.command == "doctor":
-            problems: List[str] = []
-            if not path.exists():
-                problems.append(f"store missing: {path} (run: envskill init)")
-            try:
-                bad_mode = insecure_mode(path)
-                if bad_mode is not None:
-                    problems.append(f"store permissions are {bad_mode:04o}, expected 0600")
-                validate_store(path)
-            except StoreError as exc:
-                problems.append(str(exc))
-            if shutil.which("envskill") is None:
-                problems.append("envskill is not on PATH")
-            if problems:
-                for problem in problems:
-                    print(f"FAIL: {problem}")
-                return 1
-            print(f"OK: store={path}; permissions=private; cli=available")
-            return 0
+            detected = detect_agents() if args.agent == "auto" else []
+            selected = resolve_agents(args.agent, detected)
+            report = build_report(
+                path,
+                requested_agent=args.agent,
+                detected_agents=detected,
+                selected_agents=selected,
+                target_dirs=TARGET_DIRS,
+            )
+            if args.json:
+                print(json.dumps(report, sort_keys=True))
+            else:
+                print(format_report(report))
+            return 0 if report["ok"] else 1
 
         validate_store(path)
         values = load(path)

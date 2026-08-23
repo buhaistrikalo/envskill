@@ -242,6 +242,168 @@ def insecure_mode(path: Path) -> Optional[int]:
         os.close(descriptor)
 
 
+def _path_type(mode: int) -> str:
+    if stat.S_ISLNK(mode):
+        return "symlink"
+    if stat.S_ISREG(mode):
+        return "file"
+    if stat.S_ISDIR(mode):
+        return "directory"
+    return "other"
+
+
+def _owner_status(info: os.stat_result) -> str:
+    if os.name != "posix":
+        return "unknown"
+    return "current" if info.st_uid == _effective_uid() else "other"
+
+
+def _inspect_store_parent(path: Path) -> List[Dict[str, str]]:
+    """Inspect a store parent without creating or following it."""
+    try:
+        info = path.parent.lstat()
+    except FileNotFoundError:
+        return [
+            {
+                "code": "parent_missing",
+                "path": str(path.parent),
+                "message": f"Store parent is missing: {path.parent}",
+            }
+        ]
+    except OSError as exc:
+        return [
+            {
+                "code": "parent_unreadable",
+                "path": str(path.parent),
+                "message": f"Cannot inspect store parent {path.parent}: {exc}",
+            }
+        ]
+
+    problems: List[Dict[str, str]] = []
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        problems.append(
+            {
+                "code": "parent_invalid_type",
+                "path": str(path.parent),
+                "message": f"Store parent must be a real directory: {path.parent}",
+            }
+        )
+        return problems
+    if os.name == "posix":
+        if info.st_uid != _effective_uid():
+            problems.append(
+                {
+                    "code": "parent_foreign_owner",
+                    "path": str(path.parent),
+                    "message": f"Store parent is not owned by the current user: {path.parent}",
+                }
+            )
+        if stat.S_IMODE(info.st_mode) & (stat.S_IWGRP | stat.S_IWOTH):
+            problems.append(
+                {
+                    "code": "parent_insecure_mode",
+                    "path": str(path.parent),
+                    "message": f"Store parent is writable by another user: {path.parent}",
+                }
+            )
+    return problems
+
+
+def inspect_store(path: Path) -> Dict[str, object]:
+    """Return value-free store metadata without creating, locking, or changing files."""
+    path = path.expanduser()
+    base: Dict[str, object] = {
+        "path": str(path),
+        "exists": False,
+        "type": "missing",
+        "owner": "unknown",
+        "mode": None,
+        "private": None,
+        "parseable": None,
+        "valid": False,
+        "problems": [],
+    }
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        base["problems"] = [
+            {"code": "missing", "path": str(path), "message": f"Store missing: {path}"},
+        ]
+        base["problems"].extend(
+            problem
+            for problem in _inspect_store_parent(path)
+            if problem["code"] != "parent_missing"
+        )
+        return base
+    except OSError as exc:
+        base["type"] = "unreadable"
+        base["problems"] = [
+            {
+                "code": "unreadable",
+                "path": str(path),
+                "message": f"Cannot inspect store {path}: {exc}",
+            },
+        ]
+        return base
+
+    mode = stat.S_IMODE(info.st_mode)
+    mode_text = f"{mode:04o}"
+    owner = _owner_status(info)
+    base.update(
+        {
+            "exists": True,
+            "type": _path_type(info.st_mode),
+            "owner": owner,
+            "mode": mode_text,
+            "private": mode_text == "0600" if os.name == "posix" else None,
+        }
+    )
+    problems: List[Dict[str, str]] = []
+    if base["type"] != "file":
+        problems.append(
+            {
+                "code": "invalid_type",
+                "path": str(path),
+                "message": f"Store must be a regular, non-symlink file: {path}",
+            }
+        )
+    if os.name == "posix" and owner != "current":
+        problems.append(
+            {
+                "code": "foreign_owner",
+                "path": str(path),
+                "message": f"Store is not owned by the current user: {path}",
+            }
+        )
+    if os.name == "posix" and mode != 0o600:
+        problems.append(
+            {
+                "code": "insecure_mode",
+                "path": str(path),
+                "message": f"Store permissions are {mode_text}, expected 0600",
+            }
+        )
+    problems.extend(_inspect_store_parent(path))
+
+    if base["type"] == "file" and not (os.name == "posix" and owner != "current"):
+        try:
+            load(
+                path,
+                require_private=False,
+                require_owner=True,
+                trusted_parent=False,
+            )
+        except StoreError as exc:
+            problems.append({"code": "malformed", "path": str(path), "message": str(exc)})
+            base["parseable"] = False
+        else:
+            base["parseable"] = True
+
+    base["problems"] = problems
+    base["valid"] = not problems
+    return base
+
+
 @contextmanager
 def _store_lock(path: Path) -> Iterator[None]:
     """Use a persistent kernel-backed lock; crashes release it without stale-file races."""

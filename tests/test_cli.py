@@ -1,5 +1,6 @@
 import contextlib
 import io
+import json
 import os
 import stat
 import subprocess
@@ -46,6 +47,155 @@ class CliTests(unittest.TestCase):
         code, output, _ = self.call("has", "MISSING")
         self.assertEqual(code, 1)
         self.assertEqual(output, "MISSING: missing\n")
+
+    def test_doctor_json_missing_store_is_read_only(self):
+        targets = {
+            name: Path(self.temp.name) / f"{name}-skills"
+            for name in ("codex", "claude", "hermes")
+        }
+        with (
+            patch("envskill.cli.TARGET_DIRS", targets),
+            patch("envskill.doctor.shutil.which", return_value="/usr/bin/envskill"),
+        ):
+            code, output, error = self.call("doctor", "--agent", "all", "--json")
+
+        report = json.loads(output)
+        self.assertEqual((code, error), (1, ""))
+        self.assertEqual(report["schema_version"], 1)
+        self.assertFalse(report["store"]["exists"])
+        self.assertEqual(report["store"]["type"], "missing")
+        self.assertFalse(self.path.exists())
+        self.assertTrue(all(not (parent / "envskill").exists() for parent in targets.values()))
+
+    @unittest.skipUnless(os.name == "posix", "POSIX permissions")
+    def test_doctor_json_reports_insecure_store_without_values(self):
+        self.path.write_text('TOKEN="doctor-secret"\n', encoding="utf-8")
+        self.path.chmod(0o644)
+        target = Path(self.temp.name) / "codex-skills"
+        target.mkdir()
+        targets = {"universal": target, "codex": target, "claude": target, "hermes": target}
+
+        with (
+            patch("envskill.cli.TARGET_DIRS", targets),
+            patch("envskill.doctor.shutil.which", return_value="/usr/bin/envskill"),
+        ):
+            code, output, error = self.call("doctor", "--agent", "codex", "--json")
+
+        report = json.loads(output)
+        self.assertEqual((code, error), (1, ""))
+        self.assertEqual(report["store"]["mode"], "0644")
+        self.assertTrue(report["store"]["parseable"])
+        self.assertIn("insecure_mode", {item["code"] for item in report["problems"]})
+        self.assertNotIn("doctor-secret", output)
+        self.assertIn("envskill --file", report["problems"][0]["remediation"][0])
+
+    @unittest.skipUnless(os.name == "posix", "symlink behavior is POSIX-specific")
+    def test_doctor_does_not_follow_symlinked_store(self):
+        real_store = Path(self.temp.name) / "real.env"
+        real_store.write_text('TOKEN="doctor-secret"\n', encoding="utf-8")
+        real_store.chmod(0o600)
+        self.path.symlink_to(real_store)
+        target = Path(self.temp.name) / "codex-skills"
+        target.mkdir()
+        targets = {"universal": target, "codex": target, "claude": target, "hermes": target}
+
+        with (
+            patch("envskill.cli.TARGET_DIRS", targets),
+            patch("envskill.doctor.shutil.which", return_value="/usr/bin/envskill"),
+        ):
+            code, output, error = self.call("doctor", "--agent", "codex", "--json")
+
+        report = json.loads(output)
+        self.assertEqual((code, error), (1, ""))
+        self.assertEqual(report["store"]["type"], "symlink")
+        self.assertIsNone(report["store"]["parseable"])
+        self.assertEqual(real_store.read_text(encoding="utf-8"), 'TOKEN="doctor-secret"\n')
+        self.assertNotIn("doctor-secret", output)
+
+    def test_doctor_reports_missing_skill_without_creating_it(self):
+        self.call("set", "TOKEN", "--stdin", stdin="doctor-secret")
+        target = Path(self.temp.name) / "codex-skills"
+        target.mkdir()
+        targets = {"universal": target, "codex": target, "claude": target, "hermes": target}
+
+        with (
+            patch("envskill.cli.TARGET_DIRS", targets),
+            patch("envskill.doctor.shutil.which", return_value="/usr/bin/envskill"),
+        ):
+            code, output, error = self.call("doctor", "--agent", "codex", "--json")
+
+        report = json.loads(output)
+        self.assertEqual((code, error), (1, ""))
+        self.assertEqual(report["agents"][0]["status"], "missing")
+        self.assertFalse((target / "envskill").exists())
+        self.assertNotIn("doctor-secret", output)
+
+    def test_doctor_reports_conflicting_skill_without_mutating_it(self):
+        self.call("set", "TOKEN", "--stdin", stdin="doctor-secret")
+        target = Path(self.temp.name) / "codex-skills" / "envskill"
+        target.mkdir(parents=True)
+        skill = target / "SKILL.md"
+        skill.write_text("custom skill", encoding="utf-8")
+        targets = {
+            "universal": target.parent,
+            "codex": target.parent,
+            "claude": target.parent,
+            "hermes": target.parent,
+        }
+
+        with (
+            patch("envskill.cli.TARGET_DIRS", targets),
+            patch("envskill.doctor.shutil.which", return_value="/usr/bin/envskill"),
+        ):
+            code, output, error = self.call("doctor", "--agent", "codex", "--json")
+
+        report = json.loads(output)
+        self.assertEqual((code, error), (1, ""))
+        self.assertEqual(report["agents"][0]["status"], "conflict")
+        self.assertFalse(report["agents"][0]["bundled_copy_match"])
+        self.assertEqual(skill.read_text(encoding="utf-8"), "custom skill")
+        conflict = next(item for item in report["problems"] if item["code"] == "conflict")
+        self.assertIn("--force", conflict["remediation"][0])
+
+    def test_doctor_checks_all_supported_targets(self):
+        self.call("set", "TOKEN", "--stdin", stdin="doctor-secret")
+        targets = {}
+        for name in ("codex", "claude", "hermes"):
+            parent = Path(self.temp.name) / f"{name}-skills"
+            (parent / "envskill").mkdir(parents=True)
+            (parent / "envskill" / "SKILL.md").write_text(
+                bundled_skill().read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            targets[name] = parent
+        targets["universal"] = targets["codex"]
+
+        with (
+            patch("envskill.cli.TARGET_DIRS", targets),
+            patch("envskill.doctor.shutil.which", return_value="/usr/bin/envskill"),
+        ):
+            code, output, error = self.call("doctor", "--agent", "all", "--json")
+
+        report = json.loads(output)
+        self.assertEqual((code, error), (0, ""))
+        self.assertEqual(report["agent_selection"]["selected"], ["codex", "claude", "hermes"])
+        self.assertEqual(
+            [agent["status"] for agent in report["agents"]], ["match", "match", "match"]
+        )
+        self.assertEqual(report["store"]["mode"], "0600")
+        self.assertNotIn("doctor-secret", output)
+
+    def test_doctor_human_output_keeps_success_summary(self):
+        self.call("set", "TOKEN", "--stdin", stdin="doctor-secret")
+        with (
+            patch("envskill.cli.detect_agents", return_value=[]),
+            patch("envskill.doctor.shutil.which", return_value="/usr/bin/envskill"),
+        ):
+            code, output, error = self.call("doctor")
+
+        self.assertEqual((code, error), (0, ""))
+        self.assertIn("OK: store=", output)
+        self.assertIn("permissions=private; cli=available", output)
+        self.assertNotIn("doctor-secret", output)
 
     def test_run_injects_only_selected_names(self):
         self.call("set", "ONE", "--stdin", stdin="first")
