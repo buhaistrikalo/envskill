@@ -1,29 +1,47 @@
 # envskill
 
+[Русская версия](README.ru.md)
+
 <p align="center">
   <img src="docs/images/envskill-hero.png" alt="envskill — safe local secret delivery to AI agents" width="900">
 </p>
 
-**Give AI coding agents the environment variables they need, without putting secret values in prompts, skills, repositories, or command history.**
+**Give a coding agent only the environment variables its next command needs — without placing secret values in prompts, skills, repositories, or command history.**
 
-`envskill` is two small pieces:
+`envskill` is a small, local command-line tool and a portable [Agent Skill](https://agentskills.io/). It keeps a private local store, lets an agent discover variable names (never values), and injects an explicit, minimal set into one child command.
 
-1. a dependency-free CLI that stores local secrets and injects only selected variables into a child process;
-2. a portable [`SKILL.md`](https://agentskills.io/) that teaches compatible agents to use the CLI safely.
+It works with Codex, Claude Code, Hermes Agent, and other Agent Skills-compatible hosts.
 
-It is agent-independent. The same store and skill work with Codex, Claude Code, Hermes Agent, and other Agent Skills-compatible tools.
+## Start here
 
-## Why
+Requires Python 3.9+ on macOS or Linux.
 
-Vibe-coded projects regularly need API keys. Common workarounds are risky or annoying:
+Install with Homebrew:
 
-- putting keys inside `SKILL.md`, `AGENTS.md`, or prompts;
-- copying `.env` files between projects;
-- exposing every credential to every agent command;
-- restarting an agent after each key rotation;
-- accidentally printing values during debugging.
+```bash
+brew install buhaistrikalo/envskill/envskill
+```
 
-`envskill` gives agents a narrow interface: discover **names**, then inject only the names required by one command.
+Set up the private store and the skill for detected coding-agent hosts:
+
+```bash
+envskill setup
+```
+
+Then add a secret through a hidden terminal prompt and run exactly one command with it:
+
+```bash
+envskill set GITHUB_TOKEN
+envskill run --only GITHUB_TOKEN -- gh api user
+```
+
+`envskill` never prints stored values. `setup` finishes with a value-free health check; use `envskill doctor` to run it again later.
+
+## Why use it?
+
+Giving an agent an entire `.env` file is usually over-privileged. It exposes unrelated credentials to every command and makes accidental disclosure easier.
+
+envskill instead provides this boundary:
 
 ```bash
 envskill list
@@ -31,148 +49,32 @@ envskill has OPENAI_API_KEY
 envskill run --only OPENAI_API_KEY -- python app.py
 ```
 
-The CLI never has a command that prints a stored value.
+The command receives a minimal functional environment plus only the names explicitly requested with `--only`.
 
-## Install
+## What it is — and is not
 
-Requires Python 3.9+ on macOS or Linux.
+envskill is a local least-privilege delivery tool for commands run by an agent. It helps prevent secrets from being copied into prompts, skills, repositories, command arguments, and broad child environments.
 
-On macOS or Linux, install the latest tagged release from the project tap with
-Homebrew:
+It is not a secret manager, OS sandbox, or defense against malicious code running as your user. A process that receives a secret can still read and exfiltrate it. For stronger protection, combine envskill with a sandbox, restricted network access, short-lived credentials, and provider-side scopes.
 
-```bash
-brew install buhaistrikalo/envskill/envskill
-```
+Unlike `.env`, envskill injects only selected names into a specific command. Unlike direnv, it does not automatically add secrets to every shell in a directory. It complements hosted secret managers such as 1Password, Doppler, or Infisical: use those to govern and distribute credentials, and envskill to narrowly deliver locally available credentials to an agent command.
 
-The tap formula pins a tagged release asset and its SHA-256 checksum. Homebrew
-installs the required Python runtime automatically.
+## Everyday use
 
-Install the `v0.3.0` release directly from GitHub:
-
-```bash
-uv tool install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
-```
-
-Or with `pipx`:
-
-```bash
-pipx install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
-```
-
-To install the current unreleased `main` commit directly from GitHub:
-
-```bash
-uv tool install git+https://github.com/buhaistrikalo/envskill.git
-```
-
-PyPI publication is planned; until then, use the Homebrew tap or install from
-a GitHub tag as shown above.
-
-Initialize the private store:
-
-```bash
-envskill init
-envskill doctor
-```
-
-For agent-friendly diagnostics, check every supported host and request the
-stable, value-free JSON schema:
-
-```bash
-envskill doctor --agent all --json
-```
-
-The report has `schema_version: 1` and contains `cli` (`version`, `path`,
-`available`), `platform` (`name`, `system`, `supported`), `store` (`path`,
-`exists`, `type`, `owner`, `mode`, `private`, `parseable`, `valid`, `problems`),
-`agent_selection`, `agents`, `problems`, and `notes`. Each agent entry reports
-its `target`, `skill_path`, `exists`, `status` (`match`, `missing`, `conflict`,
-`invalid`, `unreadable`, or `unconfigured`), `bundled_copy_match`, `ok`, and
-`error`; store problem entries additionally contain their affected `path`.
-Every top-level problem includes a stable `code`, a safe `message`, and
-value-free `remediation` commands. Doctor never prints dotenv contents and does
-not create or modify the store or skill files.
-
-For a normal first run, the guided command combines initialization, agent-skill
-installation, and a value-free verification:
-
-```bash
-envskill setup
-```
-
-Default location:
-
-```text
-~/.config/envskill/secrets.env
-```
-
-Override it globally with `ENVSKILL_FILE` or per command with `--file`.
-
-## Guided setup
-
-`envskill setup` is the shortest safe path from installation to a working agent
-integration. By default it detects Codex, Claude Code, and Hermes from their
-executables or user configuration directories, then installs the portable skill
-only for the hosts it finds.
-
-```bash
-# Detect installed hosts
-envskill setup
-
-# Configure one host explicitly
-envskill setup --agent codex
-
-# Configure every supported host
-envskill setup --agent all
-
-# Import an explicitly selected legacy dotenv file in the same run
-envskill setup --agent all --import ~/.env
-```
-
-Setup creates or validates the owner-only store, keeps existing secret names
-unless `--overwrite` is explicitly supplied, and finishes with a value-free
-doctor check. A different existing `SKILL.md` is reported and left untouched;
-use `--force` only when replacing that copy is intentional. Setup never prints
-dotenv or store values; with `--import`, it reads the explicitly selected dotenv
-file only to perform the import.
-
-## Install the Agent Skill
-
-The default follows the open user-level Agent Skills location used by Codex:
-
-```bash
-envskill install-skill
-# installs to ~/.agents/skills/envskill/SKILL.md
-```
-
-Presets are also available:
-
-```bash
-envskill install-skill --target codex
-envskill install-skill --target claude
-envskill install-skill --target hermes
-envskill install-skill --dir ~/.some-agent/skills
-```
-
-The skill itself is committed at [`.agents/skills/envskill/SKILL.md`](.agents/skills/envskill/SKILL.md), so it can also be copied or symlinked manually.
-
-## Usage
-
-### Add or rotate a variable
+### Add, rotate, or remove a variable
 
 ```bash
 envskill set GITHUB_TOKEN
+envskill unset GITHUB_TOKEN
 ```
 
-The value is entered through a hidden terminal prompt. For automation, use stdin:
+`set` prompts without echoing the value. For automation, pass a value on standard input rather than a command-line argument:
 
 ```bash
 security find-generic-password -w -s my-token | envskill set GITHUB_TOKEN --stdin
 ```
 
-Avoid command-line value flags: arguments can appear in shell history and process listings.
-
-### See what is available
+### Check what is available
 
 ```bash
 envskill list
@@ -180,7 +82,7 @@ envskill list --json
 envskill has GITHUB_TOKEN
 ```
 
-Only names and presence are shown.
+These commands show names and presence only.
 
 ### Run with least privilege
 
@@ -189,62 +91,34 @@ envskill run --only GITHUB_TOKEN -- gh api user
 envskill run --only AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY -- aws sts get-caller-identity
 ```
 
-The child receives a minimal functional environment rather than the agent's complete parent
-environment. If a command needs a specific non-secret parent variable or capability, inherit it
-explicitly:
+If a command needs a non-secret parent capability, preserve it explicitly:
 
 ```bash
 envskill run --only DEPLOY_TOKEN --inherit SSH_AUTH_SOCK -- git push
 ```
 
-`--all` exists for deliberate broad access, but the bundled skill tells agents not to use it without explicit user approval.
+`--all` is available for deliberate broad access, but agents should not use it without explicit approval.
 
-### Remove a variable
-
-```bash
-envskill unset GITHUB_TOKEN
-```
-
-### Import an existing single-line dotenv file
+### Migrate a dotenv file deliberately
 
 ```bash
 envskill import-env --from ~/.env
 ```
 
-For a first-run migration, the same import can be included in setup:
+The importer reads only the path you name, preserves existing variables unless `--overwrite` is supplied, reports counts instead of values, and rejects physical multiline quoted values.
+
+## Agent Skill
+
+`envskill setup` installs the bundled skill only for detected supported hosts. To install it yourself:
 
 ```bash
-envskill setup --agent all --import ~/.env
+envskill install-skill
+envskill install-skill --target codex
+envskill install-skill --target claude
+envskill install-skill --target hermes
 ```
 
-Existing names are preserved by default. Pass `--overwrite` to replace them. The command reports
-counts only and never prints imported values. Physical multiline quoted values are intentionally
-rejected; escaped newlines such as `"first\\nsecond"` are supported.
-
-## How rotation works
-
-The store is read at every `envskill run`. Updating a key with `envskill set` makes it available to the next command immediately; the coding agent does not need to restart.
-
-## Security model
-
-`envskill` reduces accidental disclosure and credential over-sharing. It is **not** an OS sandbox or a defense against a malicious process running as your user.
-
-- The store is written atomically with mode `0600` on POSIX systems.
-- Updates use a per-store lock and one atomic replacement transaction.
-- Symlinked, non-regular, foreign-owned, and group/world-accessible stores are rejected.
-- Stored values are never printed by envskill.
-- `run --only` starts from a minimal environment and injects only selected stored names.
-- Secrets never need to appear in prompts, skills, command arguments, or repositories.
-- A child process that receives a secret can still read and exfiltrate it.
-- An unrestricted agent running as your OS user may still open the store directly. The skill is a behavioral policy, not a permission boundary.
-
-For stronger isolation, combine envskill with agent sandboxes, restricted network access, short-lived credentials, and provider-side scopes.
-
-See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
-
-## Agent Skill contract
-
-A project skill should declare names, never values:
+The portable source is committed at [`.agents/skills/envskill/SKILL.md`](.agents/skills/envskill/SKILL.md). A project skill should declare variable names, never values:
 
 ```markdown
 This workflow requires `SERVICE_API_KEY`.
@@ -253,7 +127,34 @@ Run authenticated commands with:
     envskill run --only SERVICE_API_KEY -- command
 ```
 
-The shared envskill skill supplies the safety rules and rotation workflow.
+## Diagnostics and storage
+
+The default store is `~/.config/envskill/secrets.env`; override it globally with `ENVSKILL_FILE` or for one command with `--file`.
+
+```bash
+envskill doctor
+envskill doctor --agent all --json
+```
+
+Doctor is read-only and value-free. Its stable JSON format has `schema_version: 1`; it reports CLI, platform, store, agent-skill, and remediation status without reading secret values aloud or modifying files.
+
+The store is owner-only (`0600` on POSIX), updated atomically under a per-store lock, and rejects symlinked, non-regular, foreign-owned, or group/world-accessible stores. It is read for every `envskill run`, so a rotated value is available to the next command without restarting the agent.
+
+## Other installation paths
+
+The Homebrew formula uses a tagged GitHub Release asset and its SHA-256 checksum. Until PyPI publication is available, you can also install the current tagged release directly:
+
+```bash
+uv tool install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
+# or
+pipx install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
+```
+
+For unreleased development from `main`:
+
+```bash
+uv tool install git+https://github.com/buhaistrikalo/envskill.git
+```
 
 ## Development
 
@@ -263,6 +164,10 @@ uv run python -m unittest discover -s tests -v
 uv run --with ruff ruff check .
 uv build
 ```
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting and the supported security boundary.
 
 ## License
 
