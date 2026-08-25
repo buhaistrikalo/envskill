@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.4.1 — 2026-08-25
+
+- Fixed the PyPI publishing workflow to use a valid, pinned Trusted Publishing action revision.
+
 ## 0.4.0 — 2026-08-25
 
 - Added PyPI distribution via Trusted Publishing (OIDC).
