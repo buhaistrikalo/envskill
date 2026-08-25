@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "envskill"
-version = "0.4.1"
+version = "0.4.2"
 description = "A least-privilege environment variable bridge for AI coding agents"
 readme = "README.md"
 requires-python = ">=3.9"

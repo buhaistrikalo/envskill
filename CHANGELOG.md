@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.4.2 — 2026-08-25
+
+- Updated the PyPI publishing action for current package metadata compatibility.
+
 ## 0.4.1 — 2026-08-25
 
 - Fixed the PyPI publishing workflow to use a valid, pinned Trusted Publishing action revision.
