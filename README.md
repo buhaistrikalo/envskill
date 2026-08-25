@@ -165,7 +165,9 @@ uv build
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for vulnerability reporting and the supported security boundary.
+Read the [threat model and tool comparison](docs/threat-model.md) before using
+envskill with sensitive credentials. See [SECURITY.md](SECURITY.md) for
+vulnerability reporting.
 
 ## License
 

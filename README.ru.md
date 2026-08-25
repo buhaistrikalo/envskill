@@ -165,7 +165,9 @@ uv build
 
 ## Безопасность
 
-О сообщении об уязвимостях и границах модели безопасности — в [SECURITY.md](SECURITY.md).
+О границах защиты и сравнении с `.env`, direnv, secret manager и sandbox — в
+[threat model](docs/threat-model.md). О сообщении об уязвимостях — в
+[SECURITY.md](SECURITY.md).
 
 ## Лицензия
 
