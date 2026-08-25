@@ -16,10 +16,14 @@ It works with Codex, Claude Code, Hermes Agent, and other Agent Skills-compatibl
 
 Requires Python 3.9+ on macOS or Linux.
 
-Install with Homebrew:
+Install via Homebrew, `uv`, or `pipx`:
 
 ```bash
 brew install buhaistrikalo/envskill/envskill
+# or
+uv tool install envskill
+# or
+pipx install envskill
 ```
 
 Set up the private store and the skill for detected coding-agent hosts:
@@ -142,13 +146,7 @@ The store is owner-only (`0600` on POSIX), updated atomically under a per-store 
 
 ## Other installation paths
 
-The Homebrew formula uses a tagged GitHub Release asset and its SHA-256 checksum. Until PyPI publication is available, you can also install the current tagged release directly:
-
-```bash
-uv tool install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
-# or
-pipx install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
-```
+The Homebrew formula uses a tagged GitHub Release asset and its SHA-256 checksum.
 
 For unreleased development from `main`:
 

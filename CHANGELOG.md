@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-08-25
+
+- Added PyPI distribution via Trusted Publishing (OIDC).
+- `uv tool install envskill` and `pipx install envskill` now work directly from PyPI.
+
 ## 0.3.0 - 2026-08-23
 
 - Added agent-aware `envskill doctor` with Codex, Claude, and Hermes target checks, JSON output, remediation commands, and value-free diagnostics.

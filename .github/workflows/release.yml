@@ -60,7 +60,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  publish:
+  publish-github:
     name: Create GitHub release
     needs: build
     runs-on: ubuntu-latest
@@ -89,3 +89,19 @@ jobs:
           else
             gh release create "$RELEASE_TAG" --verify-tag dist/* SHA256SUMS --title "$RELEASE_TAG" --generate-notes
           fi
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: python-dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@76f5e01631ce8197e81f9d538561e6d986dce48e # v1

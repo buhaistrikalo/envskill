@@ -16,10 +16,14 @@
 
 Нужен Python 3.9+ на macOS или Linux.
 
-Установите через Homebrew:
+Установите через Homebrew, `uv` или `pipx`:
 
 ```bash
 brew install buhaistrikalo/envskill/envskill
+# или
+uv tool install envskill
+# или
+pipx install envskill
 ```
 
 Создайте приватное хранилище и настройте скилл для найденных кодовых агентов:
@@ -142,13 +146,7 @@ Doctor работает только на чтение и не выводит з
 
 ## Другие способы установки
 
-Формула Homebrew использует ассет тегированного GitHub Release и его SHA-256. Пока PyPI-публикация не готова, текущий тег можно поставить напрямую:
-
-```bash
-uv tool install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
-# или
-pipx install git+https://github.com/buhaistrikalo/envskill.git@v0.3.0
-```
+Формула Homebrew использует ассет тегированного GitHub Release и его SHA-256.
 
 Для установки незарелизенного `main`:
 

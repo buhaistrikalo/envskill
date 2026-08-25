@@ -2,20 +2,19 @@
 
 Releases are made from `main` by pushing a tag that exactly matches the package
 version. The release workflow verifies the source, builds the distributions,
-and creates a GitHub Release with the distributions and SHA-256 checksums.
+publishes to PyPI (Trusted Publishing), and creates a GitHub Release with the
+distributions and SHA-256 checksums.
 
-PyPI is a future distribution target. Homebrew is provided through the
+PyPI distribution uses [Trusted Publishing](https://docs.pypi.org/trusted-publishers/)
+(OIDC) — no API tokens are needed. Homebrew is provided through the
 project-maintained [`buhaistrikalo/homebrew-envskill`](https://github.com/buhaistrikalo/homebrew-envskill)
 tap and is updated from tagged GitHub Release assets.
 
-## Future distribution targets
+## Distribution targets
 
-- [ ] Publish to PyPI through Trusted Publishing.
+- [x] Publish to PyPI through Trusted Publishing (OIDC, no tokens).
 - [x] Add a Homebrew tap with a formula pinned to an immutable release asset
       and SHA-256 checksum.
-
-Do not add PyPI API tokens to the repository or GitHub secrets when this work
-is scheduled.
 
 ## Release checklist
 
