@@ -104,4 +104,4 @@ jobs:
           name: python-dist
           path: dist/
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@76f5e01631ce8197e81f9d538561e6d986dce48e # v1
+        uses: pypa/gh-action-pypi-publish@release/v1
